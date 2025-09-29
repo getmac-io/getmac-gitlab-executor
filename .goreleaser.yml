@@ -1,0 +1,42 @@
+---
+project_name: getmac-gitlab-executor
+
+version: 2
+
+builds:
+  - id: main
+    main: ./cmd/getmac-gitlab-executor
+    binary: getmac-gitlab-executor
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -X github.com/getmac-io/getmac-gitlab-executor/version.Version={{ .Version }}
+      - -X github.com/getmac-io/getmac-gitlab-executor/version.Commit={{ .ShortCommit }}
+      - -X github.com/getmac-io/getmac-gitlab-executor/version.Date={{ .CommitDate }}
+
+archives:
+  - id: main
+    ids:
+      - main
+    name_template: getmac-gitlab-executor-v{{ .Version }}-{{ .Os }}-{{ .Arch }}
+    formats:
+      - tar.gz
+    files:
+      - LICENSE
+      - README.md
+
+release:
+  target_commitish: "{{ .Commit }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^chore:"
