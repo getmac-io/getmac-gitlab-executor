@@ -25,6 +25,7 @@ func NewConfigCommand() *cobra.Command {
 	}
 
 	cmd.Flags().SortFlags = false
+	cmd.Flags().String("getmac-cloud-api-url", "https://api.getmac.io/v1", "Sets the GetMac Cloud API URL to use for subsequent commands")
 	cmd.Flags().String("getmac-cloud-api-key", "", "Sets the GetMac Cloud API key to use for subsequent commands")
 	cmd.MarkFlagRequired("getmac-cloud-api-key")
 	cmd.Flags().String("builds-dir", "/tmp/builds", "Sets the builds directory")
@@ -35,6 +36,11 @@ func NewConfigCommand() *cobra.Command {
 }
 
 func runConfigCommand(cmd *cobra.Command, _ []string) error {
+	apiUrl, err := cmd.Flags().GetString("getmac-cloud-api-url")
+	if err != nil {
+		return err
+	}
+
 	apiKey, err := cmd.Flags().GetString("getmac-cloud-api-key")
 	if err != nil {
 		return err
@@ -61,6 +67,7 @@ func runConfigCommand(cmd *cobra.Command, _ []string) error {
 		CacheDir:          cacheDir,
 		JobEnv: map[string]string{
 			"CUSTOM_ENV_GETMAC_CLOUD_API_KEY": apiKey,
+			"CUSTOM_ENV_GETMAC_CLOUD_API_URL": apiUrl,
 		},
 		Driver: gitlab.RunnerDriverConfig{
 			Name:    "GetMac GitLab Executor",
