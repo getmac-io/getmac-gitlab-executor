@@ -29,6 +29,8 @@
 
 4. Set `executor = "custom"` in the `[[runners]]` section in your GitLab Runner's `config.toml` file.
 
+5. Create a new SSH key pair or use an existing one. Add the public key in the [GetMac Dashboard](https://cloud.getmac.io/ssh-keys). This key will be used to access the virtual machine. Set the path to the private key using the `GETMAC_CLOUD_SSH_PRIVATE_KEY_PATH` environment variable if it's not the default path (`$HOME/.ssh/id_rsa`).
+
 ### Environment Variables
 
 The executor uses the following environment variables for configuration:
