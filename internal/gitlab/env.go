@@ -27,16 +27,18 @@ type RunnerDriverConfig struct {
 }
 
 type Environment struct {
-	URL               string
-	Token             string
-	ProjectID         string
-	MachineImage      string
-	MachineType       string
-	Region            string
-	SSHPrivateKeyPath string
-	JobID             string
-	JobURL            string
-	Debug             bool
+	URL                string
+	Token              string
+	ProjectID          string
+	MachineImage       string
+	MachineType        string
+	Region             string
+	SSHPrivateKeyPath  string
+	JobID              string
+	JobURL             string
+	Debug              bool
+	ProxyTunnelEnabled bool
+	ProxyTunnelPort    int
 }
 
 func lookupEnv(key string) (string, bool) {
@@ -95,6 +97,23 @@ func NewEnvironment() (*Environment, error) {
 		}
 
 		env.Debug = debug
+	}
+
+	if ptStr, ok := lookupEnv("GETMAC_PROXY_TUNNEL_ENABLED"); ok {
+		enabled, err := strconv.ParseBool(ptStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value for GETMAC_PROXY_TUNNEL_ENABLED: %v", err)
+		}
+		env.ProxyTunnelEnabled = enabled
+	}
+
+	env.ProxyTunnelPort = 8080
+	if portStr, ok := lookupEnv("GETMAC_PROXY_TUNNEL_PORT"); ok {
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value for GETMAC_PROXY_TUNNEL_PORT: %v", err)
+		}
+		env.ProxyTunnelPort = port
 	}
 
 	return env, nil
