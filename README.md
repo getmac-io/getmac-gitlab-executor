@@ -88,6 +88,16 @@ When enabled, the executor automatically:
 2. Opens a reverse SSH tunnel so the VM can reach the proxy at `127.0.0.1:8080`
 3. Sets `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy`, and `https_proxy` environment variables in the job script
 
+### Auto-Update
+
+The executor automatically checks for new versions via GitHub Releases during the `config` stage. Updates are downloaded and applied in-place. This check runs at most once every 24 hours.
+
+To disable automatic updates, add `--disable-auto-update` to the `config_args`:
+
+```toml
+config_args = ["config", "--getmac-cloud-api-key", "<API_KEY>", "--disable-auto-update"]
+```
+
 ## Example `.gitlab-ci.yml`
 
 ```yaml

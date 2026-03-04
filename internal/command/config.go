@@ -3,8 +3,10 @@ package command
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/getmac-io/getmac-gitlab-executor/internal/gitlab"
+	"github.com/getmac-io/getmac-gitlab-executor/internal/updater"
 	"github.com/getmac-io/getmac-gitlab-executor/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -33,11 +35,22 @@ func NewConfigCommand() *cobra.Command {
 	cmd.Flags().String("cache-dir", "/tmp/cache", "Sets the cache directory")
 	cmd.Flags().Bool("enable-proxy-tunnel", false, "Enable reverse SSH tunnel HTTP proxy for VM network access")
 	cmd.Flags().Int("proxy-tunnel-port", 8080, "Port on the VM to listen for proxied HTTP traffic")
+	cmd.Flags().Bool("disable-auto-update", false, "Disable automatic update checks")
 
 	return cmd
 }
 
 func runConfigCommand(cmd *cobra.Command, _ []string) error {
+	disableAutoUpdate, err := cmd.Flags().GetBool("disable-auto-update")
+	if err != nil {
+		return err
+	}
+	if !disableAutoUpdate {
+		if err := updater.CheckAndUpdate(version.Version); err != nil {
+			fmt.Fprintf(os.Stderr, "auto-update: %v\n", err)
+		}
+	}
+
 	apiUrl, err := cmd.Flags().GetString("getmac-cloud-api-url")
 	if err != nil {
 		return err
