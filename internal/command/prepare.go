@@ -47,7 +47,11 @@ func runPrepareCommand(cmd *cobra.Command, args []string) error {
 	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	slog.Info("Creating virtual machine...")
+	machineType := env.MachineType
+	if machineType == "" {
+		machineType = "(from image label)"
+	}
+	slog.Info("Creating virtual machine...", "image", env.MachineImage, "type", machineType, "region", env.Region)
 
 	client := getmac.NewClient(
 		getmac.WithToken(env.Token), getmac.WithBaseURL(env.URL))
@@ -62,7 +66,8 @@ func runPrepareCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create virtual machine: %w", err)
 	}
 
-	slog.Info("Virtual machine created", "id", vm.ID)
+	// The API reports the image and type a label resolved to.
+	slog.Info("Virtual machine created", "id", vm.ID, "image", vm.Image, "type", vm.Type)
 	slog.Info("Waiting for the virtual machine to start...", "timeout", env.VMReadyTimeout.String())
 
 	vm, err = waitForVirtualMachineRunning(ctx, client, env.ProjectID, vm.ID, waitOptions{

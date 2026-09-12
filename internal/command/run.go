@@ -45,7 +45,9 @@ func runRunCommand(cmd *cobra.Command, args []string) error {
 
 	_, vm, err := client.VirtualMachines().GetByName(cmd.Context(), env.ProjectID, fmt.Sprintf("gitlab-job-%s", env.JobID))
 	if err != nil {
-		return fmt.Errorf("failed to get virtual machine by name: %w", err)
+		// The job can't run without its virtual machine. That's a problem with the
+		// environment, not with the job's script.
+		return gitlab.NewSystemFailureError(fmt.Errorf("failed to get virtual machine by name: %w", err))
 	}
 
 	signer, err := loadSSHSigner(env.SSHPrivateKeyPath)
