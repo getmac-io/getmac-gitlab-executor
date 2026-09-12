@@ -3,7 +3,7 @@ module github.com/getmac-io/getmac-gitlab-executor
 go 1.24.1
 
 require (
-	github.com/getmac-io/getmac-sdk-golang v0.0.1
+	github.com/getmac-io/getmac-sdk-golang v0.1.0
 	github.com/spf13/cobra v1.10.1
 	golang.org/x/crypto v0.42.0
 )
