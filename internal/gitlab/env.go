@@ -11,6 +11,11 @@ import (
 const (
 	EnvironmentPrefix = "CUSTOM_ENV_"
 
+	// DefaultMachineImage is the GetMac runner label used when
+	// GETMAC_CLOUD_MACHINE_IMAGE is unset, the same label as runs-on: getmac in
+	// GitHub Actions.
+	DefaultMachineImage = "getmac"
+
 	DefaultVMReadyTimeout  = 20 * time.Minute
 	DefaultSSHReadyTimeout = 5 * time.Minute
 )
@@ -86,15 +91,18 @@ func NewEnvironment() (*Environment, error) {
 		return nil, fmt.Errorf("missing required environment variable: GETMAC_CLOUD_PROJECT_ID")
 	}
 
+	// A GetMac runner label (the names GitHub Actions uses in runs-on) or an image
+	// slug. The API resolves a label to its image and machine type.
 	env.MachineImage, _ = lookupEnv("GETMAC_CLOUD_MACHINE_IMAGE")
+	env.MachineImage = strings.TrimSpace(env.MachineImage)
 	if env.MachineImage == "" {
-		env.MachineImage = "macos-sequoia"
+		env.MachineImage = DefaultMachineImage
 	}
 
+	// No default, so the label in GETMAC_CLOUD_MACHINE_IMAGE decides the machine
+	// type. An image slug needs an explicit type.
 	env.MachineType, _ = lookupEnv("GETMAC_CLOUD_MACHINE_TYPE")
-	if env.MachineType == "" {
-		env.MachineType = "mac-m4-c4-m8"
-	}
+	env.MachineType = strings.TrimSpace(env.MachineType)
 
 	env.Region, _ = lookupEnv("GETMAC_CLOUD_REGION")
 	if env.Region == "" {

@@ -68,3 +68,41 @@ func TestNewEnvironment_RejectsInvalidReadyTimeouts(t *testing.T) {
 		}
 	}
 }
+
+func TestNewEnvironment_MachineDefaults(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("CUSTOM_ENV_GETMAC_CLOUD_MACHINE_IMAGE", "")
+	t.Setenv("CUSTOM_ENV_GETMAC_CLOUD_MACHINE_TYPE", "")
+
+	env, err := NewEnvironment()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if env.MachineImage != "getmac" {
+		t.Errorf("expected the getmac label by default, got %q", env.MachineImage)
+	}
+
+	if env.MachineType != "" {
+		t.Errorf("expected no default machine type so the label decides it, got %q", env.MachineType)
+	}
+}
+
+func TestNewEnvironment_MachineOverrides(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("CUSTOM_ENV_GETMAC_CLOUD_MACHINE_IMAGE", " getmac-tahoe ")
+	t.Setenv("CUSTOM_ENV_GETMAC_CLOUD_MACHINE_TYPE", "mac-m4-c4-m8")
+
+	env, err := NewEnvironment()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if env.MachineImage != "getmac-tahoe" {
+		t.Errorf("expected image getmac-tahoe, got %q", env.MachineImage)
+	}
+
+	if env.MachineType != "mac-m4-c4-m8" {
+		t.Errorf("expected type mac-m4-c4-m8, got %q", env.MachineType)
+	}
+}
