@@ -52,8 +52,18 @@ The executor uses the following environment variables for configuration:
 | `GETMAC_CLOUD_DEBUG`             | ❌      | —                       | Enable debug logging (`true`/`false`)       |
 | `GETMAC_PROXY_TUNNEL_ENABLED`    | ❌      | `false`                  | Enable reverse SSH tunnel HTTP proxy        |
 | `GETMAC_PROXY_TUNNEL_PORT`       | ❌      | `8080`                   | Port on the VM for proxied HTTP traffic     |
+| `GETMAC_CLOUD_VM_READY_TIMEOUT`  | ❌      | `20m`                    | How long `prepare` waits for the VM to start (Go duration, e.g. `30m`) |
+| `GETMAC_CLOUD_SSH_READY_TIMEOUT` | ❌      | `5m`                     | How long to retry the SSH connection once the VM is running |
 
 > **Note:** You can set the `GETMAC_CLOUD_API_KEY` environment variable via the `config --getmac-cloud-api-key` command to prevent it from appearing in job logs.
+
+### Virtual Machine Startup
+
+The `prepare` stage creates the virtual machine and waits until it's ready. It polls the GetMac API until the VM reports `running`, logging each status change with its reason (for example, when the VM is queued because a project limit was reached). Then it retries SSH until the VM accepts a session. The stage fails right away if the VM reports `error` or gets deleted.
+
+Each `run` stage also retries its SSH connection for up to `GETMAC_CLOUD_SSH_READY_TIMEOUT`.
+
+Keep GitLab Runner's `prepare_exec_timeout` (default: 3600 seconds) above `GETMAC_CLOUD_VM_READY_TIMEOUT` plus `GETMAC_CLOUD_SSH_READY_TIMEOUT`, or the runner will stop the stage before the executor reports why the VM isn't ready.
 
 ### Proxy Tunnel
 

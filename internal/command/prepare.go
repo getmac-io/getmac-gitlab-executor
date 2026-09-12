@@ -3,7 +3,9 @@ package command
 import (
 	"fmt"
 	"log/slog"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/getmac-io/getmac-gitlab-executor/internal/gitlab"
 	"github.com/getmac-io/getmac-sdk-golang"
@@ -34,12 +36,23 @@ func runPrepareCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load environment: %w", err)
 	}
 
+	// Check the key before creating a virtual machine the job couldn't connect to.
+	signer, err := loadSSHSigner(env.SSHPrivateKeyPath)
+	if err != nil {
+		return err
+	}
+
+	// GitLab Runner sends SIGTERM when the job is cancelled or times out. Stop
+	// waiting then; the cleanup stage still deletes the virtual machine.
+	ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	slog.Info("Creating virtual machine...")
 
 	client := getmac.NewClient(
 		getmac.WithToken(env.Token), getmac.WithBaseURL(env.URL))
 
-	_, vm, err := client.VirtualMachines().Create(cmd.Context(), env.ProjectID, &getmac.CreateVirtualMachineRequest{
+	_, vm, err := client.VirtualMachines().Create(ctx, env.ProjectID, &getmac.CreateVirtualMachineRequest{
 		Name:   fmt.Sprintf("gitlab-job-%s", env.JobID),
 		Image:  env.MachineImage,
 		Type:   env.MachineType,
@@ -50,8 +63,27 @@ func runPrepareCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	slog.Info("Virtual machine created", "id", vm.ID)
-	slog.Info("Waiting 30s for the virtual machine to boot up...")
-	time.Sleep(30 * time.Second)
+	slog.Info("Waiting for the virtual machine to start...", "timeout", env.VMReadyTimeout.String())
+
+	vm, err = waitForVirtualMachineRunning(ctx, client, env.ProjectID, vm.ID, waitOptions{
+		Timeout:        env.VMReadyTimeout,
+		PollInterval:   vmPollInterval,
+		RequestTimeout: vmRequestTimeout,
+	})
+	if err != nil {
+		return err
+	}
+
+	slog.Info("Waiting for SSH access to the virtual machine...", "timeout", env.SSHReadyTimeout.String())
+
+	sshClient, err := connectToVirtualMachine(
+		ctx, sshGatewayAddr, newSSHClientConfig(signer, vm.ID), env.SSHReadyTimeout, sshRetryInterval)
+	if err != nil {
+		return fmt.Errorf("virtual machine %s is running but not reachable via SSH: %w", vm.ID, err)
+	}
+	sshClient.Close()
+
+	slog.Info("Virtual machine is ready", "id", vm.ID)
 
 	return nil
 }

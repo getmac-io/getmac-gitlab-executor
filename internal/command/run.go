@@ -6,8 +6,9 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
-	"time"
+	"syscall"
 
 	"github.com/getmac-io/getmac-gitlab-executor/internal/gitlab"
 	"github.com/getmac-io/getmac-gitlab-executor/internal/proxy"
@@ -47,26 +48,20 @@ func runRunCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get virtual machine by name: %w", err)
 	}
 
-	sshKey, err := os.ReadFile(env.SSHPrivateKeyPath)
+	signer, err := loadSSHSigner(env.SSHPrivateKeyPath)
 	if err != nil {
-		return fmt.Errorf("failed to open SSH private key: %w", err)
+		return err
 	}
 
-	signer, err := ssh.ParsePrivateKey(sshKey)
+	// Retries cover a virtual machine that is still booting or a brief gateway
+	// outage. Signal handling ends once connected, so cancelling a running script
+	// still stops the executor as before.
+	connectCtx, stopSignals := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+	sshClient, err := connectToVirtualMachine(
+		connectCtx, sshGatewayAddr, newSSHClientConfig(signer, vm.ID), env.SSHReadyTimeout, sshRetryInterval)
+	stopSignals()
 	if err != nil {
-		return fmt.Errorf("failed to parse SSH private key: %w", err)
-	}
-
-	sshConfig := &ssh.ClientConfig{
-		User:            vm.ID,
-		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         10 * time.Second,
-	}
-
-	sshClient, err := ssh.Dial("tcp", "ssh.getmac.io:22", sshConfig)
-	if err != nil {
-		return fmt.Errorf("failed to connect via SSH: %w", err)
+		return gitlab.NewSystemFailureError(fmt.Errorf("failed to connect via SSH: %w", err))
 	}
 	defer sshClient.Close()
 
