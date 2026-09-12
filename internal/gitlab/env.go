@@ -5,10 +5,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
 	EnvironmentPrefix = "CUSTOM_ENV_"
+
+	DefaultVMReadyTimeout  = 20 * time.Minute
+	DefaultSSHReadyTimeout = 5 * time.Minute
 )
 
 type RunnerConfig struct {
@@ -39,10 +43,30 @@ type Environment struct {
 	Debug              bool
 	ProxyTunnelEnabled bool
 	ProxyTunnelPort    int
+	VMReadyTimeout     time.Duration
+	SSHReadyTimeout    time.Duration
 }
 
 func lookupEnv(key string) (string, bool) {
 	return os.LookupEnv(fmt.Sprintf("%s%s", EnvironmentPrefix, key))
+}
+
+func lookupDuration(key string, defaultValue time.Duration) (time.Duration, error) {
+	raw, ok := lookupEnv(key)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return defaultValue, nil
+	}
+
+	value, err := time.ParseDuration(strings.TrimSpace(raw))
+	if err != nil {
+		return 0, fmt.Errorf("invalid value for %s: %v", key, err)
+	}
+
+	if value <= 0 {
+		return 0, fmt.Errorf("invalid value for %s: must be greater than zero", key)
+	}
+
+	return value, nil
 }
 
 func NewEnvironment() (*Environment, error) {
@@ -114,6 +138,15 @@ func NewEnvironment() (*Environment, error) {
 			return nil, fmt.Errorf("invalid value for GETMAC_PROXY_TUNNEL_PORT: %v", err)
 		}
 		env.ProxyTunnelPort = port
+	}
+
+	var err error
+	if env.VMReadyTimeout, err = lookupDuration("GETMAC_CLOUD_VM_READY_TIMEOUT", DefaultVMReadyTimeout); err != nil {
+		return nil, err
+	}
+
+	if env.SSHReadyTimeout, err = lookupDuration("GETMAC_CLOUD_SSH_READY_TIMEOUT", DefaultSSHReadyTimeout); err != nil {
+		return nil, err
 	}
 
 	return env, nil
