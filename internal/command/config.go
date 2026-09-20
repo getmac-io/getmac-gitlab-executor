@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/getmac-io/getmac-gitlab-executor/internal/gitlab"
+	"github.com/getmac-io/getmac-gitlab-executor/internal/update"
 	"github.com/getmac-io/getmac-gitlab-executor/internal/version"
 	"github.com/spf13/cobra"
 )
@@ -33,11 +34,23 @@ func NewConfigCommand() *cobra.Command {
 	cmd.Flags().String("cache-dir", "/tmp/cache", "Sets the cache directory")
 	cmd.Flags().Bool("enable-proxy-tunnel", false, "Enable reverse SSH tunnel HTTP proxy for VM network access")
 	cmd.Flags().Int("proxy-tunnel-port", 8080, "Port on the VM to listen for proxied HTTP traffic")
+	cmd.Flags().Bool("disable-update-check", false, "Disable the check for newer executor releases")
 
 	return cmd
 }
 
 func runConfigCommand(cmd *cobra.Command, _ []string) error {
+	disableUpdateCheck, err := cmd.Flags().GetBool("disable-update-check")
+	if err != nil {
+		return err
+	}
+
+	// Reports to stderr via slog and never returns an error: stdout carries the
+	// JSON GitLab Runner parses, and an update check must not fail a job.
+	if !disableUpdateCheck {
+		update.Check(cmd.Context(), version.Version)
+	}
+
 	apiUrl, err := cmd.Flags().GetString("getmac-cloud-api-url")
 	if err != nil {
 		return err

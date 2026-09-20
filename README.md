@@ -287,6 +287,29 @@ When enabled, the executor automatically:
 2. Opens a reverse SSH tunnel so the VM can reach the proxy at `127.0.0.1:8080`
 3. Sets `HTTP_PROXY`, `HTTPS_PROXY`, `http_proxy`, and `https_proxy` environment variables in the job script
 
+## Update Checks
+
+The executor tells you when a newer release is available. It logs a warning in the job log during the `config` stage and does nothing else:
+
+```text
+WARN A newer version of getmac-gitlab-executor is available current=0.0.4 latest=0.1.0 upgrade=https://github.com/getmac-io/getmac-gitlab-executor/releases/latest
+```
+
+It never downloads or replaces the binary. Upgrading stays something you do deliberately, so a new release can't change how your pipelines behave until you choose it, and your runners never execute code fetched at job time.
+
+The check is designed to stay out of the way:
+
+- **It can't fail a job.** Every error ends in silence. If GitHub is unreachable, rate-limited, or slow, the executor carries on.
+- **It can't stall a job.** The request is bounded by a 3-second timeout.
+- **It won't exhaust GitHub's rate limit.** GitHub is queried at most once every 24 hours and the answer is cached, so the warning still appears in every job log without an API call per job.
+- **Development builds never check**, so local builds don't nag.
+
+To turn it off, add `--disable-update-check` to `config_args` in your `config.toml`:
+
+```toml
+config_args = ["config", "--getmac-cloud-api-key", "<API_KEY>", "--disable-update-check"]
+```
+
 ## Example `.gitlab-ci.yml`
 
 ```yaml

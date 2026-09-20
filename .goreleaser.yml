@@ -13,10 +13,13 @@ builds:
     goarch:
       - amd64
       - arm64
+    # The version package lives at internal/version. These paths must match its
+    # real import path exactly: the linker silently ignores a -X for a symbol it
+    # cannot resolve, which left every released binary reporting "dev".
     ldflags:
-      - -X github.com/getmac-io/getmac-gitlab-executor/version.Version={{ .Version }}
-      - -X github.com/getmac-io/getmac-gitlab-executor/version.Commit={{ .ShortCommit }}
-      - -X github.com/getmac-io/getmac-gitlab-executor/version.Date={{ .CommitDate }}
+      - -X github.com/getmac-io/getmac-gitlab-executor/internal/version.Version={{ .Version }}
+      - -X github.com/getmac-io/getmac-gitlab-executor/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/getmac-io/getmac-gitlab-executor/internal/version.Date={{ .CommitDate }}
 
 archives:
   - id: main
